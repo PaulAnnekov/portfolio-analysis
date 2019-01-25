@@ -3,7 +3,7 @@ import math
 import logging
 import collections
 import sys
-from decimal import *
+from decimal import Decimal
 import datetime
 from functools import reduce
 from datetime import date
