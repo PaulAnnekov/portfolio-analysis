@@ -1,10 +1,9 @@
 const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin')
 
 module.exports = {
-  // context: path.resolve(__dirname, 'analysis'),
-  entry: './analysis/app.ts',
-  devtool: 'inline-source-map',
+  context: path.resolve(__dirname, 'analysis'),
+  entry: './app.ts',
+  devtool: 'source-map',
   module: {
     rules: [
       {
@@ -23,11 +22,5 @@ module.exports = {
   },
   devServer: {
     contentBase: path.join(__dirname, 'dist')
-  },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: './analysis/index.html',
-      inject: false,
-    })
-  ]
+  }
 };
