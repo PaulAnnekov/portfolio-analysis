@@ -4,6 +4,8 @@ let prices: { [index: string]: Decimal } = {};
 let divs: { [index: string]: Decimal } = {};
 
 async function main(): Promise<void> {
+    // I hope my app will be rarely used, so it's ok to use third-party cors
+    // proxy and also dividend.com won't complain.
     const proxy = 'https://cors-anywhere.herokuapp.com/';
     let res = await fetch(proxy + 'https://www.dividend.com/search?q=VTI');
     const base = proxy + res.headers.get('X-Final-Url');
@@ -18,7 +20,6 @@ async function main(): Promise<void> {
         let d = new Date(v['x']);
         prices[toISO(d)] = new Decimal(v['y']);
     });
-    console.log(prices, divs);
 }
 
 function toISO(d: Date): string {
