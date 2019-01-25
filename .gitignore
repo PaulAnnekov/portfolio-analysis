@@ -1,1 +1,6 @@
 .vscode
+node_modules
+dist/*
+
+!dist/app.css
+!dist/index.html
