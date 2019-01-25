@@ -1,16 +1,21 @@
 import Decimal from "decimal.js"
+import {Chart} from "chart.js"
 
 async function load(symbol: string): Promise<void> {
+    console.info('Getting data')
+    console.debug('Load base API url')
     // I hope my app will be rarely used, so it's ok to use third-party cors
     // proxy and also dividend.com won't complain.
     const proxy = 'https://cors-anywhere.herokuapp.com/';
     let res = await fetch(proxy + `https://www.dividend.com/search?q=${symbol}`);
     const base = proxy + res.headers.get('X-Final-Url');
+    console.debug('Load dividend payout history')
     res = await fetch(base + 'payouthistory.json');
     let json = await res.json();
     json['series'][0]['data'].forEach((v: any) => {
         divs[v['parts']['Pay Date']] = new Decimal(v['y']);
     });
+    console.debug('Load stock prices history')
     res = await fetch(base + 'yieldhistory.json');
     json = await res.json();
     json['series'][0]['data'].forEach((v: any) => {
@@ -73,7 +78,7 @@ function addDay(d: Date): Date {
 async function main(): Promise<void> {
     Decimal.set({ precision: 4, defaults: true })
 
-    await load('VTI');
+    await load('AGG');
 
     const MONTHLY_FEE = new Decimal(10);
     let investment = new Decimal(10000);
@@ -96,11 +101,17 @@ async function main(): Promise<void> {
     let buf = investment.minus(start_total);
     console.info(`Bought ${start_sec} securities for $${start_total} (remainder: $${buf}) on ${start_date_iso}`)
     let cur_date = fromISO(start_date_iso);
+    const chartPoints: Point[] = []
+    chartPoints.push({x: cur_date, y: investment.toNumber()})
     let cur_month = cur_date.getMonth() + 1;
     let cur_year = cur_date.getFullYear();
     let years = end_year - start_year;
     const annual_returns: Decimal[] = [];
     let year_start_total = cur_price.times(start_sec);
+    interface Point {
+        x: Date;
+        y: number;
+    }
     while (cur_date <= end_date) {
         let cur_date_iso = toISO(cur_date);
         if (!prices[cur_date_iso]) {
@@ -140,6 +151,7 @@ async function main(): Promise<void> {
             monthly_fee = MONTHLY_FEE;
             cur_month = cur_date.getMonth() + 1;
         }
+        chartPoints.push({x: cur_date, y: cur_price.times(end_sec).plus(buf).toNumber()})
     }
     const end_price = prices[end_date_iso];
     const end_total = end_price.times(end_sec);
@@ -152,6 +164,55 @@ async function main(): Promise<void> {
     console.info(`Remainder: $${buf}`);
     console.info(`Capital gains: $${cap_gains} (${cap_gains.dividedBy(start_total).times(100)}%)`);
     console.info(`Annual average return: ${annual_average_return.toPrecision()}%`);
+    
+    const ctx = (document.getElementById('chart') as HTMLCanvasElement).getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: "Growth",
+                data: chartPoints,
+                pointRadius: 0,
+            }]
+        },
+        options: {
+            tooltips: {
+                callbacks: {
+                    label: function(tooltipItem) {
+                        return '$'+tooltipItem.yLabel;
+                    }
+                },
+                mode: 'index',
+                intersect: false
+            },
+            hover: {
+                mode: 'index',
+                intersect: false
+            },
+            elements: {
+                line: {
+                    // Disable bezier curves to speed up rendering.
+                    tension: 0,
+                }
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month',
+                        tooltipFormat: 'YYYY-MM-DD'
+                    }
+                }],
+                yAxes: [{
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + value;
+                        }
+                    }
+                }]
+            }
+        },
+    });
 }
 
 let prices: { [index: string]: Decimal } = {};
